@@ -5,6 +5,7 @@ const port = 5000;
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const config = require('./config/key');
+const { auth } = require('./middleware/auth');
 const { User } = require("./models/User");
 
 //application/x-www-from-urlencoded 데이터 분석 후 가져오기
@@ -22,7 +23,7 @@ mongoose
 
 app.get('/', (req, res) => res.send('hello world'));
 
-app.post('/register', (req, res) => {
+app.post('/api/users/register', (req, res) => {
     const user = new User(req.body);
     //몽고DB에서 받아오는 메소드
     user.save((err, doc) => {
@@ -33,7 +34,7 @@ app.post('/register', (req, res) => {
     });
 });
 
-app.post('/login', (req, res) => {
+app.post('/api/users/login', (req, res) => {
     User.findOne({ email: req.body.email }, (err, user) => {
         if (!user) {
             return res.json({
@@ -57,5 +58,33 @@ app.post('/login', (req, res) => {
         })
     })
 })
+
+app.get('/api/users/auth', auth, (req, res) => {
+    res.status(200).json({
+        _id: req.user._id,
+        isAdmin: req.user.role === 0 ? false : true,
+        isAuth: true,
+        email: req.user.email,
+        name: req.user.name,
+        lastname: req.user.lastname,
+        role: req.user.role,
+        image: req.user.image
+    })
+})
+
+app.get('/api/users/logout', auth, (req, res) => {
+    //미들웨어에서 가져옴
+    User.findOneAndUpdate(
+        { _id: req.user._id },
+        { token: "" },
+        (err, user) => {
+            if (err) return res.json({ success: false, err });
+            return res.status(200).send({
+                success: true
+            })
+        }
+    )
+})
+
 
 app.listen(port, () => console.log(`Example app listening on port ${port}`));
